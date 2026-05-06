@@ -39,6 +39,18 @@ http.createServer(function(req, res) {
     return;
   }
 
+  if (req.url.startsWith('/public/')) {
+    var ext = req.url.split('.').pop().toLowerCase();
+    var types = { png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg', gif:'image/gif', svg:'image/svg+xml', ico:'image/x-icon' };
+    var ct = types[ext] || 'application/octet-stream';
+    fs.readFile(path.join(__dirname, req.url), function(err, data) {
+      if (err) { res.writeHead(404); res.end('Not found'); return; }
+      res.writeHead(200, { 'Content-Type': ct });
+      res.end(data);
+    });
+    return;
+  }
+
   if (req.url === '/' || req.url === '/index.html') {
     fs.readFile(path.join(__dirname, 'index.html'), function(err, data) {
       if (err) { res.writeHead(404); res.end('Not found'); return; }
