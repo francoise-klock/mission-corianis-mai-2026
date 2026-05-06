@@ -135,7 +135,11 @@ var FIELDS = ['done','blockers','next','notes'];
 var saveTimer = null;
 
 var START = new Date(); START.setHours(0,0,0,0);
-var days = (function(){ var a = []; for (var i = 0; i < 25; i++) a.push({id:i+1,done:'',blockers:'',next:'',notes:'',mood:null}); return a; })();
+var days = (function(){
+  var a = [];
+  for (var i = 0; i < 25; i++) a.push({id:i+1,done:'',blockers:'',next:'',notes:'',mood:null});
+  return a;
+})();
 var sel = 1;
 
 function saveData() {
@@ -365,6 +369,7 @@ document.getElementById('md-btn').onclick = function() {
   setTimeout(function(){ btn.textContent='\u270e Markdown'; btn.classList.remove('ok'); }, 2000);
 };
 
+// JSON export button
 document.getElementById('json-btn').onclick = function() {
   fetch('/api/data').then(function(r){ return r.json(); }).then(function(data) {
     var blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
@@ -378,17 +383,17 @@ document.getElementById('json-btn').onclick = function() {
   });
 };
 
+// Init: render immediately with empty data, then load from API
+render();
 fetch('/api/data')
-  .then(function(r){ return r.json(); })
+  .then(function(r) { return r.json(); })
   .then(function(data) {
-    if (data.start) { START = new Date(data.start); START.setHours(0,0,0,0); }
-    if (data.days && data.days.length === 25) { days = data.days; }
-    else { saveData(); }
+    if (data && data.start) { START = new Date(data.start); START.setHours(0,0,0,0); }
+    if (data && data.days && data.days.length === 25) { days = data.days; }
     render();
   })
   .catch(function() {
     document.getElementById('save-indicator').textContent = '\u26a0 Serveur introuvable';
-    render();
   });
 </script>
 </body>
