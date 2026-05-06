@@ -129,12 +129,8 @@ var MOODS = ['\uD83D\uDE24','\uD83D\uDE10','\uD83D\uDE42','\uD83D\uDE0A','\uD83D
 var FIELDS = ['done','blockers','next','notes'];
 var saveTimer = null;
 
-var startStored = localStorage.getItem('mission_start');
-if (!startStored) { startStored = new Date().toISOString(); localStorage.setItem('mission_start', startStored); }
-var START = new Date(startStored); START.setHours(0,0,0,0);
-
-var savedDays = localStorage.getItem('mission_days');
-var days = savedDays ? JSON.parse(savedDays) : (function(){
+var START = new Date(); START.setHours(0,0,0,0);
+var days = (function(){
   var a = [];
   for (var i = 0; i < 25; i++) a.push({id:i+1,done:'',blockers:'',next:'',notes:'',mood:null});
   return a;
@@ -142,11 +138,19 @@ var days = savedDays ? JSON.parse(savedDays) : (function(){
 var sel = 1;
 
 function saveData() {
-  localStorage.setItem('mission_days', JSON.stringify(days));
   var ind = document.getElementById('save-indicator');
-  ind.textContent = '\u2713 Sauvegarde';
-  if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(function(){ ind.textContent = ''; }, 2000);
+  ind.textContent = '...';
+  fetch('/api/data', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ start: START.toISOString(), days: days })
+  }).then(function() {
+    ind.textContent = '\u2713 Sauvegarde';
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(function(){ ind.textContent = ''; }, 2000);
+  }).catch(function() {
+    ind.textContent = '\u26a0 Erreur sauvegarde';
+  });
 }
 
 function lfn(t) {
@@ -362,7 +366,18 @@ document.getElementById('md-btn').onclick = function() {
   setTimeout(function(){ btn.textContent='\u270e Markdown'; btn.classList.remove('ok'); }, 2000);
 };
 
-render();
+fetch('/api/data')
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    if (data.start) { START = new Date(data.start); START.setHours(0,0,0,0); }
+    if (data.days && data.days.length === 25) { days = data.days; }
+    else { saveData(); }
+    render();
+  })
+  .catch(function() {
+    document.getElementById('save-indicator').textContent = '\u26a0 Serveur introuvable';
+    render();
+  });
 </script>
 </body>
 </html>
