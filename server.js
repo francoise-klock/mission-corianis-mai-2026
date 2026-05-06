@@ -1,16 +1,53 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
 
-const DATA_FILE = path.join(__dirname, 'data.json');
 const PORT = process.env.PORT || 3000;
+const BIN_ID = '69fb276daaba8821977a1fb3';
+const MASTER_KEY = process.env.JSONBIN_KEY;
 
-function readData() {
-  try { return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); }
-  catch(e) { return { start: null, days: [] }; }
+function jsonbinGet(cb) {
+  var options = {
+    hostname: 'api.jsonbin.io',
+    path: '/v3/b/' + BIN_ID + '/latest',
+    method: 'GET',
+    headers: {
+      'X-Master-Key': MASTER_KEY
+    }
+  };
+  var req = https.request(options, function(res) {
+    var body = '';
+    res.on('data', function(c){ body += c; });
+    res.on('end', function() {
+      try { cb(null, JSON.parse(body).record); }
+      catch(e) { cb(e); }
+    });
+  });
+  req.on('error', cb);
+  req.end();
 }
-function writeData(obj) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(obj, null, 2));
+
+function jsonbinSet(data, cb) {
+  var body = JSON.stringify(data);
+  var options = {
+    hostname: 'api.jsonbin.io',
+    path: '/v3/b/' + BIN_ID,
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': MASTER_KEY,
+      'Content-Length': Buffer.byteLength(body)
+    }
+  };
+  var req = https.request(options, function(res) {
+    var b = '';
+    res.on('data', function(c){ b += c; });
+    res.on('end', function() { cb(null); });
+  });
+  req.on('error', cb);
+  req.write(body);
+  req.end();
 }
 
 http.createServer(function(req, res) {
@@ -21,8 +58,11 @@ http.createServer(function(req, res) {
   if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
   if (req.url === '/api/data' && req.method === 'GET') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(readData()));
+    jsonbinGet(function(err, data) {
+      if (err) { res.writeHead(500); res.end('Error'); return; }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(data));
+    });
     return;
   }
 
@@ -31,9 +71,12 @@ http.createServer(function(req, res) {
     req.on('data', function(c){ body += c; });
     req.on('end', function() {
       try {
-        writeData(JSON.parse(body));
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end('{"ok":true}');
+        var data = JSON.parse(body);
+        jsonbinSet(data, function(err) {
+          if (err) { res.writeHead(500); res.end('Error'); return; }
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end('{"ok":true}');
+        });
       } catch(e) { res.writeHead(400); res.end('Bad JSON'); }
     });
     return;
