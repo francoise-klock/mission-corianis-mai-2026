@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Journal de Mission — 25 jours</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f7f7f5; color: #1a1a1a; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+#progress-bar { height: 3px; background: #e5e5e3; flex-shrink: 0; }
+#progress-fill { height: 100%; background: #1D9E75; width: 0%; transition: width 0.4s; }
+#app { display: flex; flex: 1; overflow: hidden; }
+#sidebar { width: 200px; border-right: 1px solid #e5e5e3; background: #fff; display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+#sidebar-header { padding: 12px 14px; border-bottom: 1px solid #e5e5e3; flex-shrink: 0; }
+#sidebar-header h2 { font-size: 11px; font-weight: 600; color: #9b9b9b; letter-spacing: 0.06em; text-transform: uppercase; }
+#count-label { font-size: 11px; color: #b0b0b0; margin-top: 3px; }
+#save-indicator { font-size: 10px; color: #1D9E75; margin-top: 2px; height: 13px; }
+#days-list { overflow-y: auto; flex: 1; }
+.day-btn { display: flex; align-items: center; gap: 8px; padding: 7px 14px; background: transparent; border: none; border-left: 3px solid transparent; border-bottom: 1px solid #f0f0ee; cursor: pointer; width: 100%; text-align: left; }
+.day-btn:hover { background: #f7f7f5; }
+.day-btn.active { background: #f0faf6; border-left-color: #1D9E75; }
+.day-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: #e0e0dc; }
+.day-dot.filled { background: #1D9E75; }
+.day-dot.today-dot { background: #EF9F27; }
+.day-label { font-size: 13px; color: #1a1a1a; flex: 1; }
+.day-btn.active .day-label { font-weight: 500; }
+.day-btn.is-today .day-label { color: #0F6E56; }
+.day-date-label { font-size: 11px; color: #b0b0b0; }
+#main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #fff; }
+#main-header { padding: 14px 20px 12px; border-bottom: 1px solid #e5e5e3; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+#main-title { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+#main-date { font-size: 12px; color: #9b9b9b; margin-top: 2px; }
+#mood-row { display: flex; gap: 5px; }
+.mood-btn { background: transparent; border: 1px solid #e5e5e3; border-radius: 6px; cursor: pointer; padding: 3px 6px; font-size: 15px; line-height: 1; }
+.mood-btn.active { background: #f0faf6; border-color: #1D9E75; }
+#content { flex: 1; overflow-y: auto; padding: 16px 20px; }
+.section { margin-bottom: 18px; }
+.sec-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.sec-label { font-size: 12px; font-weight: 500; color: #9b9b9b; }
+.tog { font-size: 11px; color: #9b9b9b; border: 1px solid #e5e5e3; background: none; cursor: pointer; padding: 2px 8px; border-radius: 4px; font-family: inherit; }
+.tog:hover { color: #1D9E75; border-color: #1D9E75; background: #f0faf6; }
+.field-ta { width: 100%; min-height: 130px; padding: 10px 12px; font-size: 13px; line-height: 1.7; border: 1px solid #1D9E75; border-radius: 6px; background: #fff; color: #1a1a1a; resize: vertical; font-family: inherit; outline: none; display: none; }
+.field-prev { min-height: 130px; max-height: 240px; overflow-y: auto; padding: 10px 12px; font-size: 13px; line-height: 1.7; border: 1px solid #e5e5e3; border-radius: 6px; background: #f7f7f5; cursor: pointer; word-break: break-word; }
+.field-prev:hover { border-color: #b0b0b0; }
+.field-prev.empty::before { content: attr(data-ph); color: #b0b0b0; font-style: italic; }
+.field-prev p { margin-bottom: 3px; }
+.field-prev ul { margin: 2px 0 4px 18px; }
+.field-prev ol { margin: 2px 0 4px 18px; }
+.field-prev li { margin: 2px 0; }
+.field-prev a { color: #1D9E75; text-decoration: underline; }
+.field-prev a:hover { color: #0F6E56; }
+.cb-row { display: flex; align-items: flex-start; gap: 7px; margin: 3px 0; }
+.cb-row input[type=checkbox] { margin-top: 4px; accent-color: #1D9E75; flex-shrink: 0; }
+.cb-row.done span { text-decoration: line-through; color: #b0b0b0; }
+.hints { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.hint { font-size: 11px; color: #9b9b9b; background: #f0f0ee; border-radius: 4px; padding: 2px 6px; font-family: monospace; }
+#footer { padding: 10px 20px; border-top: 1px solid #e5e5e3; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; background: #fff; }
+.nav-btn { padding: 5px 12px; font-size: 13px; border: 1px solid #e0e0dc; border-radius: 6px; background: transparent; cursor: pointer; color: #1a1a1a; font-family: inherit; }
+.nav-btn:hover { background: #f7f7f5; }
+.nav-btn:disabled { opacity: 0.35; cursor: default; }
+.xbtn { padding: 5px 14px; font-size: 13px; border-radius: 6px; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+#md-btn { border: 1px solid #1D9E75; background: transparent; color: #1D9E75; }
+#md-btn:hover { background: #f0faf6; }
+#md-btn.ok { background: #1D9E75; color: #fff; }
+#csv-btn { border: 1px solid #5271c4; background: transparent; color: #5271c4; }
+#csv-btn:hover { background: #f0f2fa; }
+#csv-btn.ok { background: #5271c4; color: #fff; }
+</style>
+</head>
+<body>
+<div id="progress-bar"><div id="progress-fill"></div></div>
+<div id="app">
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <h2>Mission 25j</h2>
+      <p id="count-label">0 / 25 renseignes</p>
+      <p id="save-indicator"></p>
+    </div>
+    <div id="days-list"></div>
+  </div>
+  <div id="main">
+    <div id="main-header">
+      <div><div id="main-title">Jour 1</div><div id="main-date"></div></div>
+      <div id="mood-row"></div>
+    </div>
+    <div id="content">
+      <div class="section">
+        <div class="sec-header"><span class="sec-label">&#10003; Ce que j'ai fait</span><button class="tog" id="tog-done" onclick="toggle('done')">&#9998; Modifier</button></div>
+        <div class="field-prev empty" id="prev-done" data-ph="Realisations du jour..." onclick="open_('done')"></div>
+        <textarea class="field-ta" id="f-done" placeholder="Realisations...&#10;- element&#10;1. etape&#10;- [ ] tache a faire&#10;- [x] tache faite&#10;[lien](https://url.com)"></textarea>
+      </div>
+      <div class="section">
+        <div class="sec-header"><span class="sec-label">&#9888; Blocages</span><button class="tog" id="tog-blockers" onclick="toggle('blockers')">&#9998; Modifier</button></div>
+        <div class="field-prev empty" id="prev-blockers" data-ph="Obstacles rencontres..." onclick="open_('blockers')"></div>
+        <textarea class="field-ta" id="f-blockers" placeholder="Obstacles...&#10;- element&#10;- [ ] tache&#10;[lien](https://url.com)"></textarea>
+      </div>
+      <div class="section">
+        <div class="sec-header"><span class="sec-label">&#8594; Prochaines etapes</span><button class="tog" id="tog-next" onclick="toggle('next')">&#9998; Modifier</button></div>
+        <div class="field-prev empty" id="prev-next" data-ph="Ce que vous prevoyez..." onclick="open_('next')"></div>
+        <textarea class="field-ta" id="f-next" placeholder="Prochaines etapes...&#10;- element&#10;- [ ] tache&#10;[lien](https://url.com)"></textarea>
+      </div>
+      <div class="section">
+        <div class="sec-header"><span class="sec-label">&#128221; Notes libres</span><button class="tog" id="tog-notes" onclick="toggle('notes')">&#9998; Modifier</button></div>
+        <div class="field-prev empty" id="prev-notes" data-ph="Observations, idees..." onclick="open_('notes')"></div>
+        <textarea class="field-ta" id="f-notes" placeholder="Notes...&#10;- element&#10;- [ ] tache&#10;[lien](https://url.com)"></textarea>
+      </div>
+      <div class="hints">
+        <span class="hint">- item</span>
+        <span class="hint">1. item</span>
+        <span class="hint">- [ ] tache</span>
+        <span class="hint">- [x] fait</span>
+        <span class="hint">[texte](url)</span>
+      </div>
+    </div>
+    <div id="footer">
+      <div style="display:flex;gap:6px">
+        <button class="nav-btn" id="prev-btn">&#8592; Prec.</button>
+        <button class="nav-btn" id="next-btn">Suiv. &#8594;</button>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button id="md-btn" class="xbtn">&#128203; Markdown</button>
+        <button id="csv-btn" class="xbtn">&#8595; CSV Notion</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+var MOODS = ['\uD83D\uDE24','\uD83D\uDE10','\uD83D\uDE42','\uD83D\uDE0A','\uD83D\uDE80'];
+var FIELDS = ['done','blockers','next','notes'];
+var saveTimer = null;
+
+var startStored = localStorage.getItem('mission_start');
+if (!startStored) { startStored = new Date().toISOString(); localStorage.setItem('mission_start', startStored); }
+var START = new Date(startStored); START.setHours(0,0,0,0);
+
+var savedDays = localStorage.getItem('mission_days');
+var days = savedDays ? JSON.parse(savedDays) : (function(){
+  var a = [];
+  for (var i = 0; i < 25; i++) a.push({id:i+1,done:'',blockers:'',next:'',notes:'',mood:null});
+  return a;
+})();
+var sel = 1;
+
+function saveData() {
+  localStorage.setItem('mission_days', JSON.stringify(days));
+  var ind = document.getElementById('save-indicator');
+  ind.textContent = '\u2713 Sauvegarde';
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(function(){ ind.textContent = ''; }, 2000);
+}
+
+function lfn(t) {
+  return t.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, function(m, label, url) {
+    return '<a href="' + url + '" target="_blank" onclick="event.stopPropagation()">' + label + '</a>';
+  });
+}
+
+function parseMd(text) {
+  if (!text) return '';
+  var lines = text.split('\n');
+  var out = ''; var inUl = false; var inOl = false;
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    var cbU = /^- \[ \] (.+)/.exec(line);
+    var cbC = /^- \[x\] (.+)/i.exec(line);
+    var ulM = /^- (.+)/.exec(line);
+    var olM = /^\d+\. (.+)/.exec(line);
+    if (cbU || cbC) {
+      if (inUl) { out += '</ul>'; inUl = false; }
+      if (inOl) { out += '</ol>'; inOl = false; }
+      var txt = lfn(cbU ? cbU[1] : cbC[1]);
+      var cls = cbC ? 'cb-row done' : 'cb-row';
+      var chk = cbC ? ' checked' : '';
+      out += '<div class="' + cls + '"><input type="checkbox"' + chk + ' disabled><span>' + txt + '</span></div>';
+    } else if (ulM && !cbU && !cbC) {
+      if (inOl) { out += '</ol>'; inOl = false; }
+      if (!inUl) { out += '<ul>'; inUl = true; }
+      out += '<li>' + lfn(ulM[1]) + '</li>';
+    } else if (olM) {
+      if (inUl) { out += '</ul>'; inUl = false; }
+      if (!inOl) { out += '<ol>'; inOl = true; }
+      out += '<li>' + lfn(olM[1]) + '</li>';
+    } else {
+      if (inUl) { out += '</ul>'; inUl = false; }
+      if (inOl) { out += '</ol>'; inOl = false; }
+      if (line.trim()) out += '<p>' + lfn(line) + '</p>';
+    }
+  }
+  if (inUl) out += '</ul>';
+  if (inOl) out += '</ol>';
+  return out;
+}
+
+function refreshPreview(field) {
+  var ta = document.getElementById('f-' + field);
+  var prev = document.getElementById('prev-' + field);
+  if (ta.value.trim()) {
+    prev.classList.remove('empty');
+    prev.innerHTML = parseMd(ta.value);
+  } else {
+    prev.classList.add('empty');
+    prev.innerHTML = '';
+  }
+}
+
+function open_(field) { toggle(field, true); }
+
+function toggle(field, forceOpen) {
+  var ta = document.getElementById('f-' + field);
+  var prev = document.getElementById('prev-' + field);
+  var tog = document.getElementById('tog-' + field);
+  var isOpen = ta.style.display === 'block';
+  if (isOpen && !forceOpen) {
+    days[sel-1][field] = ta.value;
+    saveData(); refreshPreview(field);
+    ta.style.display = 'none'; prev.style.display = '';
+    tog.innerHTML = '&#9998; Modifier';
+  } else if (!isOpen) {
+    ta.style.display = 'block'; prev.style.display = 'none';
+    tog.innerHTML = '&#10003; Valider';
+    ta.focus();
+  }
+}
+
+function closeAll() {
+  for (var i = 0; i < FIELDS.length; i++) {
+    var f = FIELDS[i];
+    var ta = document.getElementById('f-' + f);
+    if (ta.style.display === 'block') {
+      days[sel-1][f] = ta.value;
+      ta.style.display = 'none';
+      document.getElementById('prev-' + f).style.display = '';
+      document.getElementById('tog-' + f).innerHTML = '&#9998; Modifier';
+      refreshPreview(f);
+    }
+  }
+  saveData();
+}
+
+function getFullDate(n) {
+  var d = new Date(START.getTime()); d.setDate(d.getDate() + n - 1);
+  return d.toLocaleDateString('fr-FR', {weekday:'long', day:'2-digit', month:'long'});
+}
+function getShortDate(n) {
+  var d = new Date(START.getTime()); d.setDate(d.getDate() + n - 1);
+  return d.toLocaleDateString('fr-FR', {day:'2-digit', month:'short'});
+}
+function getCSVDate(n) {
+  var d = new Date(START.getTime()); d.setDate(d.getDate() + n - 1);
+  return d.toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit', year:'numeric'});
+}
+function getToday() {
+  var now = new Date(); now.setHours(0,0,0,0);
+  return Math.max(1, Math.min(25, Math.floor((now - START) / 86400000) + 1));
+}
+function isFilled(d) { return d.done || d.blockers || d.next || d.notes; }
+
+function renderSidebar() {
+  var today = getToday();
+  var list = document.getElementById('days-list');
+  list.innerHTML = '';
+  var filled = 0;
+  for (var i = 0; i < days.length; i++) {
+    var d = days[i];
+    if (isFilled(d)) filled++;
+    var btn = document.createElement('button');
+    btn.className = 'day-btn' + (d.id===sel?' active':'') + (d.id===today?' is-today':'');
+    var dot = document.createElement('span');
+    dot.className = 'day-dot' + (isFilled(d)?' filled':(d.id===today?' today-dot':''));
+    var lbl = document.createElement('span');
+    lbl.className = 'day-label';
+    lbl.textContent = 'Jour ' + d.id + (d.id===today?' \u25cf':'');
+    var dt = document.createElement('span');
+    dt.className = 'day-date-label';
+    dt.textContent = getShortDate(d.id);
+    btn.appendChild(dot); btn.appendChild(lbl); btn.appendChild(dt);
+    (function(id){ btn.onclick = function(){ closeAll(); sel=id; render(); }; })(d.id);
+    list.appendChild(btn);
+  }
+  document.getElementById('count-label').textContent = filled + ' / 25 renseignes';
+  document.getElementById('progress-fill').style.width = Math.round((filled/25)*100) + '%';
+}
+
+function renderMood() {
+  var row = document.getElementById('mood-row');
+  row.innerHTML = '';
+  for (var i = 0; i < MOODS.length; i++) {
+    var m = MOODS[i];
+    var btn = document.createElement('button');
+    btn.className = 'mood-btn' + (days[sel-1].mood===m?' active':'');
+    btn.textContent = m;
+    (function(mood){ btn.onclick = function(){ days[sel-1].mood = days[sel-1].mood===mood?null:mood; saveData(); renderMood(); renderSidebar(); }; })(m);
+    row.appendChild(btn);
+  }
+}
+
+function render() {
+  var today = getToday();
+  var d = days[sel-1];
+  document.getElementById('main-title').textContent = 'Jour ' + sel + (sel===today ? ' \u2014 Aujourd\'hui' : '');
+  document.getElementById('main-date').textContent = getFullDate(sel);
+  for (var i = 0; i < FIELDS.length; i++) {
+    var f = FIELDS[i];
+    var ta = document.getElementById('f-' + f);
+    ta.value = d[f]; ta.style.display = 'none';
+    document.getElementById('prev-' + f).style.display = '';
+    document.getElementById('tog-' + f).innerHTML = '&#9998; Modifier';
+    refreshPreview(f);
+  }
+  document.getElementById('prev-btn').disabled = sel === 1;
+  document.getElementById('next-btn').disabled = sel === 25;
+  renderMood(); renderSidebar();
+  var active = document.querySelector('.day-btn.active');
+  if (active) active.scrollIntoView({block:'nearest'});
+}
+
+for (var fi = 0; fi < FIELDS.length; fi++) {
+  (function(field) {
+    document.getElementById('f-' + field).addEventListener('input', function(e) {
+      days[sel-1][field] = e.target.value;
+      saveData(); renderSidebar();
+    });
+  })(FIELDS[fi]);
+}
+
+document.getElementById('prev-btn').onclick = function() { if(sel>1){ closeAll(); sel--; render(); } };
+document.getElementById('next-btn').onclick = function() { if(sel<25){ closeAll(); sel++; render(); } };
+
+document.getElementById('csv-btn').onclick = function() {
+  var rows = [['Jour','Date','Humeur','Realisations','Blocages','Prochaines etapes','Notes'].join(',')];
+  for (var i = 0; i < days.length; i++) {
+    var d = days[i];
+    var esc = function(v){ return '"' + (v||'').replace(/"/g,'""') + '"'; };
+    rows.push([d.id, getCSVDate(d.id), d.mood||'', esc(d.done), esc(d.blockers), esc(d.next), esc(d.notes)].join(','));
+  }
+  var blob = new Blob([rows.join('\n')], {type:'text/csv;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href=url; a.download='mission_25_jours.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  var btn = document.getElementById('csv-btn');
+  btn.textContent='\u2713 Telecharge!'; btn.classList.add('ok');
+  setTimeout(function(){ btn.textContent='\u2193 CSV Notion'; btn.classList.remove('ok'); }, 2000);
+};
+
+document.getElementById('md-btn').onclick = function() {
+  var lines = ['# Journal de Mission - 25 jours'];
+  for (var i = 0; i < days.length; i++) {
+    var d = days[i];
+    if (!isFilled(d)) continue;
+    lines.push('## Jour ' + d.id + ' - ' + getFullDate(d.id));
+    if (d.mood) lines.push('**Humeur :** ' + d.mood);
+    if (d.done) lines.push('### Realisations\n' + d.done);
+    if (d.blockers) lines.push('### Blocages\n' + d.blockers);
+    if (d.next) lines.push('### Prochaines etapes\n' + d.next);
+    if (d.notes) lines.push('### Notes\n' + d.notes);
+    lines.push('---');
+  }
+  navigator.clipboard.writeText(lines.join('\n\n'));
+  var btn = document.getElementById('md-btn');
+  btn.textContent='\u2713 Copie!'; btn.classList.add('ok');
+  setTimeout(function(){ btn.textContent='\u270e Markdown'; btn.classList.remove('ok'); }, 2000);
+};
+
+render();
+</script>
+</body>
+</html>
